@@ -60,3 +60,12 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+# SQ added (removing big files, among others):
+SC_ToolBox/outputs/
+SC_ToolBox/pickle/TimeSeries_REMODECE.pickle
+SC_ToolBox/pickle/TimeSeries_PT_min.pickle
+SC_ToolBox/pickle/TimeSeries_WithNoise_ok.pickle
+*~
+SC_ToolBox/start_ipython.sh
+
