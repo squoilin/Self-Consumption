@@ -17,7 +17,7 @@ sys.path.append('../')
 from SC_functions import FinancialAnalysis,EnergyFlows
 
 
-def SCoptim(CapacityFactorPV,CountryData,Inv,coef): 
+def SCoptim(CapacityFactorPV,CountryData,Inv,coef,max_RPV=10): 
     '''
     Main optimization function
     
@@ -79,13 +79,35 @@ def SCoptim(CapacityFactorPV,CountryData,Inv,coef):
         
         #print 'PV = ' + str(r_PV) + ', BAT = ' + str(r_bat) + ', PR = ' + str(PR) + ', LCOE = ' + str(LCOE)
         return F['LCOE'] + penalty_PV + penalty_bat    
-    
+  
+    def f_optim_fixedPV(c):
+        '''
+        Objective function. Returns the profitability of the system with r_PV fixed.
+        Note that some global variables are used.
+        
+        Global variables: Demand,eta_inv,eta_bat,CapacityFactorPV,coef,CountryData,
+                          Inv, country    
+        
+        '''
+        r_PV = max_RPV
+        [r_bat] = c
+        # if the ratios are negative, set them to zero and add a penalty to the objective function
+        penalty_PV = - 1E10 * np.minimum(0,r_PV)
+        penalty_bat = - 1E10 * np.minimum(0,r_bat)
+        r_PV = np.maximum(0,r_PV)
+        r_bat = np.maximum(0,r_bat)
+        
+        E = EnergyFlows(r_PV,r_bat,Demand,eta_inv,eta_bat,CapacityFactorPV,coef)
+        F = FinancialAnalysis(E,CountryData,Inv)
+        
+        #print 'PV = ' + str(r_PV) + ', BAT = ' + str(r_bat) + ', PR = ' + str(PR) + ', LCOE = ' + str(LCOE)
+        return F['LCOE'] + penalty_PV + penalty_bat    
     
     
     # Constraints:
     cons = ({'type': 'ineq', 'fun': lambda x: x[0]},
             {'type': 'ineq', 'fun': lambda x: x[1]})
-    bnds = ((0, 10), (0, 10))
+    bnds = ((0, max_RPV), (0, 10))
     
     # Hard coded system efficiencies:
     eta_inv = 0.96
@@ -113,6 +135,20 @@ def SCoptim(CapacityFactorPV,CountryData,Inv,coef):
         r_PV = result[4][0]
         r_bat = result[4][1]
         LCOE = result[3]
+    
+    # if r_PV is unbounded, do the univariate optimization with its max value
+    if r_PV > max_RPV:  
+        result_fixedPV = optimize.minimize(f_optim_fixedPV, [1.1], method='Nelder-Mead', tol=1e-5, constraints=cons, bounds=bnds).values()
+        E_fixedPV = EnergyFlows(max_RPV,0,Demand,eta_inv,eta_bat,CapacityFactorPV,coef)
+        F_fixedPV = FinancialAnalysis(E_fixedPV,CountryData,Inv)
+        if F_fixedPV <= result_fixedPV[3]:
+            r_PV = max_RPV
+            r_bat = 0
+            LCOE = F_fixedPV
+        else:
+            r_PV = max_RPV
+            r_bat = result_fixedPV[4][0]
+            LCOE = result_fixedPV[3]
 
     return [r_PV, r_bat, LCOE]  
     
