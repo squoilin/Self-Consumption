@@ -11,7 +11,6 @@ import numpy as np
 import sys
 
 
-
 def FinancialAnalysis(E,CountryData,Inv):
     '''
     Calculation of the profits linked to the PV/battery installation, user perspective
@@ -192,23 +191,23 @@ def fSSR(r_PV,r_bat, a):
     elif len(a) == 16:          # Second version
         # Weigthing factor to impose an accuracte, fitted curve at r_bat = 0:
         max_W = 0.4
-        W = np.minimum(max_W,np.maximum(0,r_bat))
+        W = np.minimum(1,np.maximum(0,r_bat/max_W))
         
         
         if r_PV == 0:
             SSR = 0
         elif r_PV < 1:
-            SSR = W/max_W * \
+            SSR = W * \
                   (a[0] + a[1] * np.tanh(a[2]*r_bat)+ a[3] * r_bat + \
                   (a[12] * np.tanh(a[13] * (1 - r_PV)))) * r_PV + \
-                  (max_W - W)/max_W * \
+                  (1 - W) * \
                   np.maximum(r_PV, (a[4] * np.tanh(a[5]*r_PV)+ a[6]* r_PV + a[7]* r_PV**0.5) \
                   * ( 1 + a[14]*np.tanh(r_bat))+a[15]*np.tanh(r_bat))
         else:
-            SSR = W/max_W * \
+            SSR = W * \
                   (a[0] + a[1] * np.tanh(a[2]*r_bat)+ a[3] * r_bat + \
                   (a[8] + a[9]* r_bat) * np.tanh(a[10]*(r_PV-1))+ a[11]* (r_PV-1)) + \
-                  (max_W - W)/max_W * \
+                  (1 - W) * \
                   np.maximum(r_PV, (a[4] * np.tanh(a[5]*r_PV)+ a[6]* r_PV + a[7]* r_PV**0.5) \
                   * ( 1 + a[14]*np.tanh(r_bat))+a[15]*np.tanh(r_bat))   
         return np.minimum(100,np.maximum(0,SSR))   
@@ -350,6 +349,171 @@ def battery_simulation(PV,load,param,print_analysis=False,output_timeseries=True
         print 'Residue (check) :' + str(residue) + 'kWh \n'
     
     if output_timeseries:
-        return [BatteryGeneration,BatteryConsumption,LevelOfCharge,EnergyWithGrid]
+        return {'BatteryGeneration':BatteryGeneration,'BatteryConsumption':BatteryConsumption,'LevelOfCharge':LevelOfCharge,'EnergyWithGrid':EnergyWithGrid}
     else:
         return SelfSufficiencyRate
+        
+def save(var,filename,fileformat='pickle-bin'):
+    ''' 
+    Function that saves a variable in different format
+    Example:
+        save(data,'datafile.pickle',format='pickle')
+    :param var: Python variable to be saved
+    :param filename: String with the file name (!without extension)
+    :param fileformat: String variable with the desired format:
+        'pickle': Standard pickle 
+        'pickle-bin': Pickle in a binary format (default, improved win/linux compatibility)
+        'pickle-bin-gzip': Pickle binary, gzipped
+        'hdf': hdf5 format (only for pandas dataframes)
+    '''
+    try:
+       import cPickle as pickle
+    except:
+       import pickle
+    import gzip
+    import sys
+    import pandas as pd
+    
+    if fileformat=='pickle-bin' or fileformat=='p':
+        filename = filename + '.p'
+        with open(filename,'wb') as f:
+            pickle.dump(var,f, protocol=pickle.HIGHEST_PROTOCOL)
+    elif fileformat=='pickle':
+        filename = filename + '.pickle'
+        with open(filename,'wb') as f:
+            pickle.dump(var,f)        
+    elif fileformat=='pickle-bin-gzip' or fileformat=='p.gz':
+        filename = filename + '.p.gz'
+        with gzip.open(filename,'wb') as f:
+            pickle.dump(var,f)        
+    elif fileformat=='hdf' or fileformat=='h5':
+        filename = filename + '.h5'
+        if isinstance(var,pd.DataFrame):
+            var.to_hdf(filename,'table')
+        else:
+            sys.exit('Input variable must be a pandas dataframe for the hdf format')
+    else:
+        sys.exit('Format ' + fileformat + ' not supported (allowed: pickle, pickle-bin, pickle-bin-gzip)')
+        
+
+def load(filename):
+    ''' 
+    Function that loads a saved file and detect its type from the file extension
+    Example:
+        load('data.p.gz')
+    valid file extensions:
+        .pickle : Standard pickle 
+        .p : Pickle in a binary format 
+        .p.gz : Pickle binary, gzipped
+        .h5 : hdf5 format (only for pandas dataframes)
+    '''
+    try:
+       import cPickle as pickle
+    except:
+       import pickle
+    import gzip
+    import sys
+    import pandas as pd
+    import os.path
+    
+    if os.path.isfile(filename):
+        pass
+    elif os.path.isfile(filename + '.pickle'): 
+        filename = filename + '.pickle'
+    elif os.path.isfile(filename + '.p'):
+        filename = filename + '.p'
+    elif os.path.isfile(filename + '.p.gz'):
+        filename = filename + '.p.gz'    
+    elif  os.path.isfile(filename + '.h5'):
+        filename = filename + '.h5'
+    else:
+        sys.exit('File not found')
+        
+    if filename[-7:]=='.pickle' or filename[-2:]=='.p':
+        with open(filename,'rb') as f:
+            out = pickle.load(f)
+    elif filename[-5:]=='.p.gz':
+        with gzip.open(filename,'rb') as f:
+            out = pickle.load(f)       
+    elif filename[-3:]=='.h5':
+        out = pd.read_hdf(filename,'table')
+    else:
+        sys.exit('File extension not supported (allowed: .pickle, .p, .p.gz, .h5)')
+    return out
+    
+def dispatch_plot(dispatch,pv,demand,param,rng=[]):
+    '''
+    Plotting the results of the dispatch
+    Parameters:
+        dispatch (dict of np arrrays): Values of the main dispatch vectors
+        PV_DC (pd.Series): PV generation (DC side)
+        demand (pd.Series): Demand (AC side)
+        rng (pd datetimeindex): selected index for plotting
+    '''
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    
+    alpha = '0.3'
+    eta_inv = param['InverterEfficiency']
+    timestep = param['timestep']
+    index = demand.index
+    
+    if isinstance(rng,list):
+        pdrng = demand.index[:7*24*4]
+    else:
+        pdrng = rng
+
+
+    BatteryConsumption = dispatch['BatteryConsumption']
+    BatteryGeneration = dispatch['BatteryGeneration']
+    LevelOfCharge = pd.Series(dispatch['LevelOfCharge'],index=index)
+    PowerToGrid = pd.Series(np.maximum(-dispatch['EnergyWithGrid'],0)/timestep,index=index)
+    PowerFromGrid = pd.Series(np.maximum(dispatch['EnergyWithGrid'],0)/timestep,index=index)
+
+    vec1 = pd.Series(- PowerToGrid - BatteryConsumption * eta_inv,index=index)
+    vec2 = pd.Series(- BatteryConsumption * eta_inv,index=index)
+    vec3 = pd.Series(pv * eta_inv,index=index)
+    vec4 = pd.Series((pv + BatteryGeneration) * eta_inv,index=index)
+    vec5 = pd.Series(PowerFromGrid + (pv+BatteryGeneration) * eta_inv,index=index)
+
+    vec_sc = pd.Series(np.minimum(pv*eta_inv,demand),index=index)
+
+    fig = plt.figure(figsize=(13,7))
+    
+    # Create left axis:
+    ax = fig.add_subplot(111)
+    ax.plot(pdrng,demand[pdrng],color='k')
+    
+    plt.fill_between(pdrng,vec1[pdrng],vec2[pdrng],color='r',alpha=alpha,hatch="x")
+    plt.fill_between(pdrng,vec2[pdrng],0,color='b',alpha=alpha,hatch="x")
+    plt.fill_between(pdrng,0,vec3[pdrng],color='y',alpha=alpha)
+    plt.fill_between(pdrng,vec3[pdrng],vec4[pdrng],color='b',alpha=alpha,hatch="//")
+    plt.fill_between(pdrng,vec4[pdrng],vec5[pdrng],color='r',alpha=alpha,hatch="//")
+
+    plt.fill_between(pdrng,0,vec_sc[pdrng],color='r',alpha=alpha)
+
+    ax.set_ylabel('Power [kW]')
+    ax.yaxis.label.set_fontsize(16)
+
+    # Create right axis:
+    ax2 = fig.add_subplot(111, sharex=ax, frameon=False,label='aa')
+    ax2.plot(pdrng,LevelOfCharge[pdrng],color='k',alpha=0.3,linestyle='--')
+    ax2.yaxis.tick_right()
+    ax2.yaxis.set_label_position("right")
+    ax2.set_ylabel('Battery SOC [kWh]')
+    ax2.yaxis.label.set_fontsize(16)
+
+    # Legend:
+    import matplotlib.patches as mpatches
+    import matplotlib.lines as mlines
+    to_grid = mpatches.Patch(color='red',alpha=0.3,hatch='x',label='To Grid')
+    to_battery = mpatches.Patch(color='blue',alpha=0.3,hatch='x',label='To Battery')
+    sun = mpatches.Patch(color='yellow',alpha=0.3,hatch='x',label='PV')
+    from_grid = mpatches.Patch(color='red',alpha=0.3,hatch='//',label='From Grid')
+    from_battery = mpatches.Patch(color='blue',alpha=0.3,hatch='//',label='From Battery')
+    line_demand = mlines.Line2D([], [], color='black',label='Load')
+    line_SOC = mlines.Line2D([], [], color='black',alpha=0.3,label='SOC',linestyle='--')
+
+    plt.legend(handles=[to_grid,to_battery,sun,from_grid,from_battery,line_demand,line_SOC],loc=4)
+    
+    return True

@@ -14,13 +14,12 @@ Created on Fri Mar  4 01:27:31 2016
 
 from __future__ import division
 import pandas as pd
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
 sys.path.append('data/')
 from SC_Optimization import SCoptim
-from SC_functions import FinancialAnalysis,EnergyFlows
+from SC_functions import FinancialAnalysis,EnergyFlows,load
 
 
 # Selection of the country within the table:
@@ -50,7 +49,7 @@ PV_data = pd.read_excel('data/PVCapacityFactors.xlsx',index_col=0,skiprows=range
 CapacityFactorPV = float(PV_data.Generation[code])
 
 # Load country data:
-CountryData = pickle.load(open('pickle/regulations.pickle','rb'))
+CountryData = load('pickle/regulations')
 
 # Parametric study (varying battery cost)
 costs = np.arange(100,250,2)  
@@ -76,8 +75,8 @@ for c in costs:
 # Plotting:
 fig4 = plt.figure(2,figsize=[7,5])
 plt.subplot(211)
-plt.plot(costs,BAT,linestyle='--',linewidth=2,label='Battery')
-plt.plot(costs,PV,label='PV',linewidth=2)
+plt.plot(costs,BAT,linestyle='--',linewidth=2, marker='o',label='Battery')
+plt.plot(costs,PV,label='PV', marker='o',linewidth=2)
 plt.ylabel('Relative PV/Battery sizes [-]')
 plt.ylim(0,2.5)
 plt.legend(fontsize=16)
@@ -88,8 +87,8 @@ ax.set_xticklabels([])
 ax.yaxis.label.set_fontsize(16)
 
 plt.subplot(212)
-plt.plot(costs,LCOEs,label='LCOE [EUR/MWh]',linewidth=2)
-plt.plot(costs,LCOE_stor,linestyle='--',linewidth=2,label='LCOS [EUR/MWh]')
+plt.plot(costs,LCOEs,label='LCOE [EUR/MWh]',linewidth=2, marker='o')
+plt.plot(costs,LCOE_stor,linestyle='--',linewidth=2, marker='o',label='LCOS [EUR/MWh]')
 plt.ylabel('LCOE [EUR/MWh]',fontsize=16)
 plt.xlabel('Cost of storage [EUR/kWh]',fontsize=16)
 plt.legend(loc=4,fontsize=16)

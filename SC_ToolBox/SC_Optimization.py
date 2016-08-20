@@ -123,18 +123,18 @@ def SCoptim(CapacityFactorPV,CountryData,Inv,coef,max_RPV=10):
     E_0 = EnergyFlows(0,0,Demand,eta_inv,eta_bat,CapacityFactorPV,coef)
     F_0 = FinancialAnalysis(E_0,CountryData,Inv)
     # Selecting the best solution:
-    if F_0 <= result2[3] and F_0 <= result[3]:
+    if F_0 <= result2[4] and F_0 <= result[4]:
         r_PV = 0
         r_bat = 0
         LCOE = F_0
-    elif result2[3] <= F_0 and result2[3] <= result[3]:
-        r_PV = result2[4][0]
+    elif result2[4] <= F_0 and result2[4] <= result[4]:
+        r_PV = result2[5][0]
         r_bat = 0
-        LCOE = result2[3]
-    elif result[3] <= F_0 and result[3] <= result2[3]:
-        r_PV = result[4][0]
-        r_bat = result[4][1]
-        LCOE = result[3]
+        LCOE = result2[4]
+    elif result[4] <= F_0 and result[4] <= result2[4]:
+        r_PV = result[5][0]
+        r_bat = result[5][1]
+        LCOE = result[4]
     
     # if r_PV is unbounded, do the univariate optimization with its max value
     if r_PV > max_RPV:  
@@ -147,8 +147,8 @@ def SCoptim(CapacityFactorPV,CountryData,Inv,coef,max_RPV=10):
             LCOE = F_fixedPV
         else:
             r_PV = max_RPV
-            r_bat = result_fixedPV[4][0]
-            LCOE = result_fixedPV[3]
+            r_bat = result_fixedPV[5][0]
+            LCOE = result_fixedPV[4]
 
     return [r_PV, r_bat, LCOE]  
     

@@ -20,9 +20,8 @@ from __future__ import division
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from enload import *
+from SC_enload import *
 from SC_functions import *
-import pickle
 import pandas as pd
 
 show_plots_markov = False
@@ -32,7 +31,7 @@ show_plots_psd = True
 
 index_2014 = pd.DatetimeIndex(start='01/01/2014 00:00:00',end='31/12/2014 23:59:00',freq='15min')
 
-[TimeSeries_hist, HouseInfo_hist] = pickle.load(open('pickle/TimeSeries_UK.pickle','rb'))
+[TimeSeries_hist, HouseInfo_hist] = load('pickle/TimeSeries_UK')
 
 f = 4 # frequency (inverse of the time step)
 
@@ -71,7 +70,7 @@ log_error = np.maximum(-3,log_error)
 print  'mean log error : ' + str(np.mean(log_error))
 
 #plotHeatmap(scale_vector(log_error,8760))
-noise = addNoise(np.mean(log_error)*np.ones(35040),3,1,min=-10)
+noise = addNoise(np.mean(log_error)*np.ones(35040),3,1,Lmin=-10)
 #reconsitute signal:
 load_noise = np.exp(noise + np.log(mean))
 
@@ -110,7 +109,7 @@ min = -3
 #Generate spectrally colored loads
 #Retrieve original load spectrum
 
-curve_ldc = genLoadsFromLDC(LDC_load(curve,min=min),N=N)
+curve_ldc = genLoadsFromLDC(LDC_load(curve,Lmin=min),N=N)
 PSD = plt.psd(curve, Fs=1, NFFT=N, sides='twosided') #TODO: check the relation of NFFT, Fs, and Dt (Nyquist criterion)
 
 #use sampled load that respects the marginal distribution with no spectrum
@@ -147,8 +146,8 @@ if show_plots_psd:
     fig = plt.figure(figsize=(16,3))
     plt.subplot(1, 2, 1)
     
-    plt.plot(*LDC_load(curve_psd,min=min),label='LDC of simulated noise') 
-    plt.plot(*LDC_load(curve,min=min),label='LDC of original noise') 
+    plt.plot(*LDC_load(curve_psd,Lmin=min),label='LDC of simulated noise') 
+    plt.plot(*LDC_load(curve,Lmin=min),label='LDC of original noise') 
     plt.xlim(xmin=0);
     plt.legend()
     

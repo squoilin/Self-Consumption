@@ -14,7 +14,6 @@ Created on Fri Feb 26 22:59:57 2016
 
 from __future__ import division
 import pandas as pd
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -22,7 +21,7 @@ from pylab import colormaps
 cmaps = colormaps()
 import sys
 sys.path.append('data/')
-from SC_functions import FinancialAnalysis,EnergyFlows
+from SC_functions import FinancialAnalysis,EnergyFlows,load
 
 # Inputs:
 r_PV = 1.34
@@ -52,7 +51,7 @@ PV_data = pd.read_excel('data/PVCapacityFactors.xlsx',index_col=0,skiprows=range
 CapacityFactorPV = float(PV_data.Generation[code])
 
 # Load country data:
-CountryData = pickle.load(open('pickle/regulations.pickle','rb'))
+CountryData = load('pickle/regulations')
 
 # Parametric study: varying r_PV and r_bat:
 ratios_PV = np.linspace(1,2,20)

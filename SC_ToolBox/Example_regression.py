@@ -12,12 +12,12 @@ Created on Fri Mar  4 01:27:31 2016
 @author: Sylvain Quoilin (JRC)
 """
 
-import pickle
 import numpy as np
 from SC_Regression import *
+from SC_functions import load
 
 # Load the data to be fitted:
-[PV_hr, BAT_hr, SSR_hr] = pickle.load(open('pickle/SSR_curve_all.pickle','rb'))
+[PV_hr, BAT_hr, SSR_hr] = load('pickle/SSR_curve_all')
     
 coef = SCregression(PV_hr,BAT_hr,SSR_hr,show_plots=True)
 

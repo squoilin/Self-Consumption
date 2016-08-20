@@ -68,4 +68,5 @@ SC_ToolBox/pickle/TimeSeries_PT_min.pickle
 SC_ToolBox/pickle/TimeSeries_WithNoise_ok.pickle
 *~
 SC_ToolBox/start_ipython.sh
+working_files/
 
